@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sheets ↔ Bitrix24 Sync</title>
+  <style>
+    :root { --line: #d1d5db; --muted: #4b5563; --ok: #047857; --err: #b91c1c; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Inter, system-ui, sans-serif;
+      background: #ffffff;
+      color: #111111;
+    }
+    header, main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    h1 { margin: 0 0 8px; font-size: 28px; word-break: break-word; }
+    p.lead { color: var(--muted); margin-top: 0; }
+    .card {
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 0;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    .card h2 { margin-top: 0; font-size: 18px; }
+    input, button {
+      border-radius: 0;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: #111111;
+      padding: 10px 12px;
+      font: inherit;
+    }
+    input { width: 100%; min-width: 0; }
+    button {
+      cursor: pointer;
+      background: #111111;
+      color: #ffffff;
+      border: 0;
+      font-weight: 600;
+    }
+    button.secondary { background: #f3f4f6; color: #111111; border: 1px solid var(--line); }
+    button.small { width: auto; padding: 6px 10px; }
+    button:disabled { opacity: .6; cursor: wait; }
+    #runBtn { width: auto; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .row > * { flex: 1 1 200px; }
+    .table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 13px; }
+    th, td { border-bottom: 1px solid var(--line); text-align: left; padding: 8px 6px; vertical-align: middle; }
+    td.err { word-break: break-word; }
+    .ok { color: var(--ok); }
+    .err { color: var(--err); }
+    .muted { color: var(--muted); }
+    .status-list { margin: 0; padding-left: 18px; line-height: 1.7; }
+    @media (max-width: 800px) {
+      header, main { padding: 16px; }
+      h1 { font-size: 22px; }
+      .card { padding: 14px; }
+      .row { display: block; }
+      .row > * { margin-bottom: 8px; width: 100%; }
+      #runBtn, button { width: 100%; }
+      button.small { width: auto; }
+    }
+    @media (max-width: 480px) {
+      header, main { padding: 12px; }
+      h1 { font-size: 20px; }
+      table { font-size: 12px; min-width: 480px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Đồng bộ Google Sheets ↔ Bitrix24</h1>
+    <p class="lead">Cấu hình mapping, xem trạng thái, theo dõi log và chạy đồng bộ thủ công.</p>
+  </header>
+  <main>
+    <section class="card">
+      <h2>Trạng thái đồng bộ</h2>
+      <ul id="statusBox" class="status-list muted"><li>Đang tải...</li></ul>
+    </section>
+
+    <section class="card">
+      <h2>Chạy đồng bộ thủ công</h2>
+      <button id="runBtn" onclick="triggerSync()">Chạy đồng bộ ngay</button>
+      <p id="runMsg" class="muted"></p>
+    </section>
+
+    <section class="card">
+      <h2>Cấu hình mapping</h2>
+      <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Cột Google Sheet</th>
+            <th>Trường Bitrix24</th>
+            <th>Bắt buộc</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="mapBody"></tbody>
+      </table>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="secondary" type="button" onclick="addMapRow()">Thêm dòng ánh xạ</button>
+        <button type="button" onclick="saveMapping()">Lưu mapping</button>
+      </div>
+      <p id="mapMsg" class="muted"></p>
+    </section>
+
+    <section class="card">
+      <h2>Nhật ký đồng bộ</h2>
+      <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Thời gian</th>
+            <th>Tạo</th>
+            <th>Cập nhật</th>
+            <th>Bỏ qua</th>
+            <th>Lỗi</th>
+            <th>Nguyên nhân lỗi</th>
+          </tr>
+        </thead>
+        <tbody id="logBody"></tbody>
+      </table>
+      </div>
+    </section>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let mappingDoc = null;
+
+    async function api(path, options = {}) {
+      const res = await fetch(path, {
+        ...options,
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || res.statusText);
+      return data;
+    }
+
+    function allMappings() {
+      if (!mappingDoc) return [];
+      return [...(mappingDoc.columns || []), ...(mappingDoc.customFields || [])];
+    }
+
+    function escapeAttr(value) {
+      return String(value).replace(/"/g, '&quot;');
+    }
+
+    function renderMapping() {
+      const rows = allMappings();
+      $('mapBody').innerHTML = rows.map((item, index) => `
+        <tr>
+          <td><input data-i="${index}" data-k="sheet" value="${escapeAttr(item.sheet || '')}" /></td>
+          <td><input data-i="${index}" data-k="bitrix" value="${escapeAttr(item.bitrix || '')}" /></td>
+          <td><input type="checkbox" data-i="${index}" data-k="required" ${item.required ? 'checked' : ''} /></td>
+          <td><button class="secondary small" type="button" onclick="removeMapRow(${index})">Xóa</button></td>
+        </tr>
+      `).join('') || '<tr><td colspan="4" class="muted">Chưa có quy tắc ánh xạ</td></tr>';
+    }
+
+    function collectMappings() {
+      return [...document.querySelectorAll('#mapBody tr')].map((row) => {
+        const sheet = row.querySelector('[data-k="sheet"]');
+        if (!sheet) return null;
+        const prev = allMappings()[Number(sheet.dataset.i)] || {};
+        return {
+          ...prev,
+          sheet: row.querySelector('[data-k="sheet"]').value.trim(),
+          bitrix: row.querySelector('[data-k="bitrix"]').value.trim(),
+          required: row.querySelector('[data-k="required"]').checked,
+        };
+      }).filter(Boolean);
+    }
+
+    function addMapRow() {
+      if (!mappingDoc) {
+        mappingDoc = { version: 1, columns: [], customFields: [], systemColumns: {}, dedupeFields: ['email', 'phone'] };
+      }
+      mappingDoc.columns = collectMappings().filter((item) => item.sheet || item.bitrix);
+      mappingDoc.customFields = [];
+      mappingDoc.columns.push({ sheet: '', bitrix: '', type: 'string', required: false });
+      renderMapping();
+    }
+
+    function removeMapRow(index) {
+      const current = collectMappings();
+      current.splice(index, 1);
+      mappingDoc.columns = current;
+      mappingDoc.customFields = [];
+      renderMapping();
+    }
+
+    async function loadMapping() {
+      const data = await api('/api/config');
+      mappingDoc = data.mapping;
+      renderMapping();
+    }
+
+    async function saveMapping() {
+      $('mapMsg').textContent = '';
+      try {
+        if (!mappingDoc) throw new Error('Chưa tải được mapping.');
+        const columns = collectMappings();
+        if (columns.some((item) => !item.sheet || !item.bitrix)) {
+          throw new Error('Mỗi dòng phải có đủ Cột Google Sheet và Trường Bitrix24.');
+        }
+        if (!columns.length) throw new Error('Cần ít nhất một quy tắc ánh xạ.');
+        if (!columns.some((item) => item.required)) {
+          throw new Error('Cần ít nhất một trường bắt buộc.');
+        }
+        const payload = { ...mappingDoc, columns, customFields: [] };
+        await api('/api/mapping', { method: 'POST', body: JSON.stringify(payload) });
+        mappingDoc = payload;
+        $('mapMsg').textContent = 'Đã lưu mapping.';
+        $('mapMsg').className = 'ok';
+      } catch (e) {
+        $('mapMsg').textContent = e.message;
+        $('mapMsg').className = 'err';
+      }
+    }
+
+    async function loadStatus() {
+      const data = await api('/api/sync/status');
+      const last = (data.recent || [])[0];
+      const items = [
+        data.running ? 'Đang chạy đồng bộ' : 'Sẵn sàng',
+        last
+          ? `Lần chạy cuối: ${last.startedAt}`
+          : 'Chưa có lần đồng bộ nào',
+        last
+          ? `Tạo ${last.counters.created}, cập nhật ${last.counters.updated}, bỏ qua ${last.counters.skipped}, lỗi ${last.counters.errors}`
+          : '',
+      ].filter(Boolean);
+      $('statusBox').innerHTML = items.map((item) => `<li>${item}</li>`).join('');
+    }
+
+    function errorReasons(run) {
+      const reasons = (run.records || [])
+        .filter((item) => item.action === 'error')
+        .map((item) => item.error || item.message)
+        .filter(Boolean);
+      return reasons.length ? reasons.join('; ') : '';
+    }
+
+    async function loadLogs() {
+      const data = await api('/api/logs?limit=20');
+      const rows = (data || []).map((run) => `
+        <tr>
+          <td>${run.startedAt}</td>
+          <td class="ok">${run.counters.created}</td>
+          <td>${run.counters.updated}</td>
+          <td class="muted">${run.counters.skipped}</td>
+          <td class="err">${run.counters.errors}</td>
+          <td class="err">${errorReasons(run)}</td>
+        </tr>`).join('');
+      $('logBody').innerHTML = rows || '<tr><td colspan="6" class="muted">Chưa có nhật ký</td></tr>';
+    }
+
+    async function triggerSync() {
+      $('runBtn').disabled = true;
+      $('runMsg').textContent = 'Đang đồng bộ...';
+      $('runMsg').className = 'muted';
+      try {
+        const result = await api('/api/sync/trigger', { method: 'POST' });
+        $('runMsg').className = result.counters.errors ? 'err' : 'ok';
+        $('runMsg').textContent =
+          `Xong: tạo ${result.counters.created}, cập nhật ${result.counters.updated}, bỏ qua ${result.counters.skipped}, lỗi ${result.counters.errors}.`;
+        await Promise.all([loadStatus(), loadLogs()]);
+      } catch (e) {
+        $('runMsg').className = 'err';
+        $('runMsg').textContent = e.message;
+      } finally {
+        $('runBtn').disabled = false;
+      }
+    }
+
+    Promise.all([loadStatus(), loadLogs(), loadMapping()]).catch((e) => {
+      $('statusBox').innerHTML = `<li class="err">${e.message}</li>`;
+    });
+  </script>
+</body>
+</html>

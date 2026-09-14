@@ -1,0 +1,21 @@
+{
+  "comment": "Bản sao mẫu — copy thành mapping.json rồi chỉnh theo Sheet thật",
+  "version": 1,
+  "dedupeFields": ["email", "phone"],
+  "conflictStrategy": "last_write_wins",
+  "systemColumns": {
+    "leadId": "Lead ID Bitrix24",
+    "syncStatus": "Trạng thái đồng bộ",
+    "lastSyncAt": "Thời gian đồng bộ cuối",
+    "errorMessage": "Thông báo lỗi",
+    "syncHash": "Sync Hash",
+    "sheetUpdatedAt": "Thời gian sửa Sheet"
+  },
+  "columns": [
+    { "sheet": "Tên khách hàng", "bitrix": "TITLE", "type": "string", "required": true, "trim": true },
+    { "sheet": "Email", "bitrix": "EMAIL", "type": "email", "required": true, "multivalue": true },
+    { "sheet": "Số điện thoại", "bitrix": "PHONE", "type": "phone", "required": false, "multivalue": true }
+  ],
+  "customFields": [],
+  "twoWayFields": ["STATUS_ID", "ASSIGNED_BY_ID", "COMMENTS", "TITLE"]
+}

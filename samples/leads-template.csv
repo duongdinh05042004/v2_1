@@ -1,0 +1,4 @@
+Tên khách hàng,Email,Số điện thoại,Công ty,Nguồn lead (UTM Source),Ngân sách dự kiến,Trạng thái,Người phụ trách,Ghi chú,Ngành nghề
+Nguyen Van A,a.nguyen@example.com,0901234567,ABC JSC,website,50000000,Mới,1,Lead từ form homepage,Phần mềm
+Tran Thi B,b.tran@example.com,+84987654321,XYZ Corp,sự kiện,120000000,Đang xử lý,1,Gặp tại Tech Expo 2026,Thương mại
+Le Minh C,c.le@partner.vn,0912345678,Partner Co,đối tác,80000000,Mới,2,Giới thiệu từ đối tác miền Nam,Logistics

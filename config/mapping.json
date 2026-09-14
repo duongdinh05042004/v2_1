@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "dedupeFields": [
+    "email",
+    "phone"
+  ],
+  "conflictStrategy": "last_write_wins",
+  "systemColumns": {
+    "leadId": "Lead ID Bitrix24",
+    "syncStatus": "Trạng thái đồng bộ",
+    "lastSyncAt": "Thời gian đồng bộ cuối",
+    "errorMessage": "Thông báo lỗi",
+    "syncHash": "Sync Hash",
+    "sheetUpdatedAt": "Thời gian sửa Sheet"
+  },
+  "columns": [
+    {
+      "sheet": "Tên khách hàng",
+      "bitrix": "TITLE",
+      "type": "string",
+      "required": true,
+      "trim": true
+    },
+    {
+      "sheet": "Email",
+      "bitrix": "EMAIL",
+      "type": "email",
+      "required": true,
+      "multivalue": true
+    },
+    {
+      "sheet": "Số điện thoại",
+      "bitrix": "PHONE",
+      "type": "phone",
+      "required": true,
+      "multivalue": true
+    },
+    {
+      "sheet": "Công ty",
+      "bitrix": "COMPANY_TITLE",
+      "type": "string",
+      "required": true,
+      "trim": true
+    },
+    {
+      "sheet": "Nguồn lead (UTM Source)",
+      "bitrix": "UTM_SOURCE",
+      "type": "enum",
+      "required": true,
+      "enumMap": {
+        "website": "WEB",
+        "web": "WEB",
+        "form website": "WEBFORM",
+        "sự kiện": "TRADE_SHOW",
+        "su kien": "TRADE_SHOW",
+        "event": "TRADE_SHOW",
+        "đối tác": "PARTNER",
+        "doi tac": "PARTNER",
+        "partner": "PARTNER",
+        "ads": "ADVERTISING",
+        "quảng cáo": "ADVERTISING"
+      },
+      "alsoWrite": "SOURCE_ID"
+    },
+    {
+      "sheet": "Ngân sách dự kiến",
+      "bitrix": "OPPORTUNITY",
+      "type": "number",
+      "required": false
+    },
+    {
+      "sheet": "Trạng thái",
+      "bitrix": "STATUS_ID",
+      "type": "enum",
+      "required": false,
+      "enumMap": {
+        "mới": "NEW",
+        "moi": "NEW",
+        "new": "NEW",
+        "đang xử lý": "IN_PROCESS",
+        "dang xu ly": "IN_PROCESS",
+        "in process": "IN_PROCESS",
+        "đã xử lý": "PROCESSED",
+        "da xu ly": "PROCESSED",
+        "đã chuyển đổi": "CONVERTED",
+        "converted": "CONVERTED",
+        "rác": "JUNK",
+        "junk": "JUNK"
+      }
+    },
+    {
+      "sheet": "Người phụ trách",
+      "bitrix": "ASSIGNED_BY_ID",
+      "type": "string",
+      "required": false
+    },
+    {
+      "sheet": "Ghi chú",
+      "bitrix": "COMMENTS",
+      "type": "string",
+      "required": false
+    },
+    {
+      "sheet": "Ngành nghề",
+      "bitrix": "UF_CRM_INDUSTRY",
+      "type": "string",
+      "required": false
+    }
+  ],
+  "customFields": [],
+  "twoWayFields": [
+    "STATUS_ID",
+    "ASSIGNED_BY_ID",
+    "COMMENTS",
+    "OPPORTUNITY",
+    "TITLE"
+  ]
+}

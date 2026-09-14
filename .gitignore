@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+.env
+*.log
+data/
+logs/
+credentials/
+google-oauth-token.json
+service-account.json
+.DS_Store
+.idea/
+.vscode/
+*.local.json
